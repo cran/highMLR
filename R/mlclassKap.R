@@ -24,7 +24,7 @@
 #' @import missForest
 #' @export
 #' @examples
-#' \donttest{
+#'  \dontrun{
 #' ##
 #' mlclassKap(m=50,n=59,idSurv="OS",idEvent="event",Time="Visit",s_ID="ID",per=20,fold=3,data=srdata)
 #' ##

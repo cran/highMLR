@@ -49,11 +49,14 @@ After selcting the most significant features, a Cox proportional hazard frailty 
 frailty term is considered as the heterogeneity among the subjects or patients. The distribution of frailty component is considered as either Gaussian, Gamma or t distribution.
 }
 \examples{
-\donttest{
+\dontrun{
 data(hnscc)
 mlhighFrail(cols=c(10:20), idSurv="OS", idEvent="Death", idFrail="ID", dist="gaussian",
 per=20, fold = 3, data=hnscc)
 }
+}
+\references{
+Sonabend, R., Kiraly, F. J., Bender, A., Bernd Bischl B. and Lang M. mlr3proba: An R Package for Machine Learning in Survival Analysis, 2021, Bioinformatics, <https://doi.org/10.1093/bioinformatics/btab039>
 }
 \seealso{
 mlhighHet, mlhighCox

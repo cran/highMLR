@@ -39,7 +39,7 @@ A list of genes as per their classifications
 Applications of machine learning in survival analysis by prognostic classification of genes by CoxPH model.
 }
 \examples{
-\donttest{
+\dontrun{
 data(srdata)
 mlclassCox(m=50,n=59,idSurv="OS",idEvent="event",Time="Visit",s_ID="ID",per=20,fold=3,data=srdata)
 }

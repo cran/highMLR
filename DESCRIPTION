@@ -1,10 +1,10 @@
 Title: Feature Selection for High Dimensional Survival Data
 Package: highMLR
-Version: 0.1.0
-Date: 2021-05-08
+Version: 0.1.1
+Date: 2022-07-17
 Depends: R (>= 3.5.0)
-Imports: mlr3, mlr3proba, mlr3learners, survival, gtools, tibble,
-        dplyr, utils, coxme, missForest
+Imports: mlr3, mlr3learners, survival, gtools, tibble, dplyr, utils,
+        coxme, missForest, R6
 LazyData: Yes
 LazyDataCompression: xz
 ByteCompile: Yes
@@ -22,10 +22,10 @@ License: GPL-3
 Encoding: UTF-8
 NeedsCompilation: no
 Maintainer: Atanu Bhattacharjee <atanustat@gmail.com>
-RoxygenNote: 7.1.1
-Packaged: 2021-05-10 10:45:29 UTC; Atanu
+RoxygenNote: 7.2.0
+Packaged: 2022-07-16 22:31:58 UTC; atanu
 Author: Atanu Bhattacharjee [aut, cre, ctb],
   Gajendra K. Vishwakarma [aut, ctb],
   Souvik Banerjee [aut, ctb]
 Repository: CRAN
-Date/Publication: 2021-05-11 09:40:08 UTC
+Date/Publication: 2022-07-18 08:10:08 UTC

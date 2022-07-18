@@ -2,9 +2,7 @@
 % Please edit documentation in R/mlhighHet.R
 \name{mlhighHet}
 \alias{mlhighHet}
-\title{mlhighHet
-
-Performs heterogeneity analysis in gene expression}
+\title{mlhighHet}
 \usage{
 mlhighHet(cols, idSurv, idEvent, idFrail, num, fold = 3, data)
 }
@@ -31,6 +29,8 @@ This function extracts features based on ML method, finds optimal cut-off values
 Cox PH model and obtain the most consistent level according to the cut-offs.
 }
 \details{
+Performs heterogeneity analysis in gene expression
+
 This function extracts features based on minimum log-Loss function using Cox proportional hazard model as learner method on a high dimensional survival data.
 For those selected genes, we obtain optimal cutoff values using minimum p-value in a Cox PH model. The Cox PH model is used sequencially for each combination of genes
 and all possible gene combinations are tested to obtain best possible combination with minimum BIC value. The subjects are classified according to different levels of those genes. Using a Cox PH frailty model, we obtain the most consistent level for which the frailty variance is minimum.
@@ -41,10 +41,15 @@ The CoxPH frailty model is defined as,
 frailty term is considered as the heterogeneity among the subjects or patients. Gaussian distribution with mean 0 is considered for the distribution of frailty component.
 }
 \examples{
-\donttest{
+\dontrun{
 data(hnscc)
 mlhighHet(cols=c(27:32), idSurv="OS", idEvent="Death", idFrail="ID", num=2, fold = 3, data=hnscc)
 }
+}
+\references{
+Sonabend, R., Király, F. J., Bender, A., Bernd Bischl B. and Lang M. mlr3proba: An R Package for Machine Learning in Survival Analysis, 2021, Bioinformatics, <https://doi.org/10.1093/bioinformatics/btab039>
+
+Bhattacharjee, A. Vishwakarma, G.K. and Banerjee, S. A modified risk detection approach of biomarkers by frailty effect on multiple time to event data, 2020, <arXiv:2012.02102>.
 }
 \seealso{
 mlhighCox, mlhighFrail

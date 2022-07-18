@@ -17,7 +17,6 @@
 #' @param data A data frame that contains the survival and covariate information for the subjects
 #'
 #' @import mlr3
-#' @import mlr3proba
 #' @import mlr3learners
 #' @import survival
 #' @import utils
@@ -28,7 +27,7 @@
 #' @references Sonabend, R., Király, F. J., Bender, A., Bernd Bischl B. and Lang M. mlr3proba: An R Package for Machine Learning in Survival Analysis, 2021, Bioinformatics, <https://doi.org/10.1093/bioinformatics/btab039>
 #'
 #' @examples
-#' \donttest{
+#' \dontrun{
 #' data(hnscc)
 #' mlhighCox(cols=c(6:15), idSurv="OS", idEvent="Death", per=20, fold = 3, data=hnscc)
 #' }
@@ -38,6 +37,188 @@
 
 mlhighCox=function(cols, idSurv, idEvent, per=20, fold=3, data)
 {
+  format_range = function(range) {
+    l = min(range)
+    u = max(range)
+
+    str = sprintf(
+      "%s%s, %s%s",
+      if (is.finite(l)) "[" else "(",
+      if (is.finite(l)) c(l, l) else c("-\\infty", "-Inf"),
+      if (is.finite(u)) c(u, u) else c("\\infty", "Inf"),
+      if (is.finite(u)) "]" else ")")
+    paste0("\\eqn{", str[1L], "}{", str[2L], "}")
+  }
+
+  format_types = function(types) {
+    if (length(types) == 0) {
+      return("-")
+    } else {
+      return(paste0(types, collapse = ", "))
+    }
+  }
+
+  toproper = function(str, split = " ", fixed = TRUE) {
+    str = strsplit(str, split, fixed)
+    str = lapply(str, function(x) {
+      paste0(toupper(substr(x, 1, 1)), tolower(substr(x, 2, 1000)), collapse = split)
+    })
+    return(unlist(str))
+  }
+
+  check_subsetpattern = function(x, choices, empty.ok = TRUE) { # nolint
+    if (all(grepl(paste0(choices, collapse = "|"), x))) {
+      return(TRUE)
+    } else {
+      return(sprintf(
+        "Must be a subset of %s, but is %s",
+        paste0("{", paste0(choices, collapse = ", "), "}"),
+        paste0("{", paste0(x, collapse = ", "), "}")))
+    }
+  }
+
+  get_akritas_learner = function() {
+    require_namespaces("mlr3extralearners")
+    utils::getFromNamespace("LearnerSurvAkritas", "mlr3extralearners")
+  }
+
+  r6_private = function(x) {
+    x$.__enclos_env__$private
+  }
+
+
+  Survnew = R6::R6Class("Survnew",
+                        inherit = TaskSupervised,
+                        public = list(
+                          initialize = function(id, backend, time = "time", event = "event", time2,
+                                                type = c("right", "left", "interval", "counting", "interval2", "mstate")) {
+
+                            type = match.arg(type)
+
+                            backend = as_data_backend(backend)
+
+                            if (type != "interval2") {
+                              c_ev = r6_private(backend)$.data[, event, with = FALSE][[1]]
+                              if (type == "mstate") {
+                                assert_factor(c_ev)
+                              } else if (type == "interval") {
+                                assert_integerish(c_ev, lower = 0, upper = 3)
+                              } else if (!is.logical(c_ev)) {
+                                assert_integerish(c_ev, lower = 0, upper = 2)
+                              }
+                            }
+
+                            private$.censtype = type
+
+                            if (type %in% c("right", "left", "mstate")) {
+                              super$initialize(
+                                id = id, task_type = "surv", backend = backend,
+                                target = c(time, event))
+                            } else if (type %in% c("interval", "counting")) {
+                              super$initialize(
+                                id = id, task_type = "surv", backend = backend,
+                                target = c(time, time2, event))
+                            } else {
+                              super$initialize(
+                                id = id, task_type = "surv", backend = backend,
+                                target = c(time, time2))
+                            }
+                          },
+
+                          truth = function(rows = NULL) {
+                            # truth is defined as the survival outcome as a Survival object
+                            tn = self$target_names
+                            ct = self$censtype
+                            d = self$data(rows, cols = self$target_names)
+                            args = list(time = d[[tn[1L]]], type = self$censtype)
+
+                            if (ct %in% c("right", "left", "mstate")) {
+                              args$event = as.integer(d[[tn[2L]]])
+                            } else if (ct %in% c("interval", "counting")) {
+                              args$event = as.integer(d[[tn[3L]]])
+                              args$time2 = d[[tn[2L]]]
+                            } else {
+                              args$time2 = d[[tn[2L]]]
+                            }
+
+                            if (allMissing(args$event) & allMissing(args$time)) {
+                              return(suppressWarnings(invoke(Surv, .args = args)))
+                            } else {
+                              return(invoke(Surv, .args = args))
+                            }
+                          },
+
+                          formula = function(rhs = NULL) {
+                            # formula appends the rhs argument to Surv(time, event)~
+                            tn = self$target_names
+                            if (length(tn) == 2) {
+                              lhs = sprintf("Surv(%s, %s, type = '%s')", tn[1L], tn[2L], self$censtype)
+                            } else {
+                              lhs = sprintf("Surv(%s, %s, %s, type = '%s')", tn[1L], tn[2L], tn[3L], self$censtype)
+                            }
+                            formulate(lhs, rhs %??% ".", env = getNamespace("survival"))
+                          },
+
+                          times = function(rows = NULL) {
+                            truth = self$truth(rows)
+                            if (self$censtype %in% c("interval", "counting", "interval2")) {
+                              return(truth[, 1:2])
+                            } else {
+                              return(truth[, 1L])
+                            }
+                          },
+
+                          f_status = function(rows = NULL) {
+                            truth = self$truth(rows)
+                            if (self$censtype %in% c("interval", "counting", "interval2")) {
+                              f_status = truth[, 3L]
+                            } else {
+                              f_status = truth[, 2L]
+                            }
+
+                            as.integer(f_status)
+                          },
+
+                          unq_times = function(rows = NULL) {
+                            if (self$censtype %in% c("interval", "counting", "interval2")) {
+                              stop("Not implemented for 'interval', 'interval2', or 'counting', 'censtype'.")
+                            }
+
+                            sort(unique(self$times(rows)))
+                          },
+
+                          unq_event_times = function(rows = NULL) {
+                            if (self$censtype %in% c("interval", "counting", "interval2")) {
+                              stop("Not implemented for 'interval', 'interval2', or 'counting', 'censtype'.")
+                            }
+
+                            sort(unique(self$times(rows)[self$f_status(rows) != 0]))
+                          },
+
+                          risk_set = function(time = NULL) {
+                            if (self$censtype %in% c("interval", "counting", "interval2")) {
+                              stop("Not implemented for 'interval', 'interval2', or 'counting', 'censtype'.")
+                            }
+
+                            if (is.null(time)) {
+                              self$row_ids
+                            } else {
+                              self$row_ids[self$times() >= time]
+                            }
+                          }
+                        ),
+
+                        active = list(
+                          censtype = function() {
+                            return(private$.censtype)
+                          }
+                        ),
+
+                        private = list(
+                          .censtype = character()
+                        )
+  )
+
   learn_method=mlr3::lrn("surv.coxph") #making the learner function,
   #options=kaplan, coxph
   learners=list(learn_method)
@@ -50,7 +231,7 @@ mlhighCox=function(cols, idSurv, idEvent, per=20, fold=3, data)
     f=0
     S_test=coxph(Surv(get(idSurv),get(idEvent))~data[,i],na.action=NULL,data=data)
     #if(is.na(coef(S_test))==TRUE) break
-    task = TaskSurv$new(id = "data",
+    task = Survnew$new(id = "data",
                         backend = data[,c(which(colnames(data)==idSurv),
                                           which(colnames(data)==idEvent),i)],
                         time = idSurv, event = idEvent)
@@ -82,3 +263,7 @@ mlhighCox=function(cols, idSurv, idEvent, per=20, fold=3, data)
   s=head(s[order(s$surv.logloss),],(dim(s)[1]*per)/100)
   return(s)
 }
+
+utils::globalVariables(c("assert_factor","require_namespaces","assert_integerish","%??%","super","self","allMissing","invoke","formulate","private"))
+
+

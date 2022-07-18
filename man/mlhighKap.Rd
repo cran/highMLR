@@ -33,10 +33,13 @@ Using the Kaplan Meier method on the given survival data, this function selects 
 \deqn{L(f,t)=-log(f(t))}. The features with minimum log-loss function are extracted.
 }
 \examples{
-\donttest{
+\dontrun{
 data(hnscc)
 mlhighKap(cols=c(6:15), idSurv="OS", idEvent="Death", per=20, fold = 3, data=hnscc)
 }
+}
+\references{
+Sonabend, R., Kiraly, F. J., Bender, A., Bernd Bischl B. and Lang M. mlr3proba: An R Package for Machine Learning in Survival Analysis, 2021, Bioinformatics
 }
 \seealso{
 mlhighCox

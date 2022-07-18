@@ -34,7 +34,7 @@ the most significant feature based on a performance measure. The performance mea
 \deqn{L(f,t)=-log(f(t))}. The features with minimum log-loss function are extracted.
 }
 \examples{
-\donttest{
+\dontrun{
 data(hnscc)
 mlhighCox(cols=c(6:15), idSurv="OS", idEvent="Death", per=20, fold = 3, data=hnscc)
 }
