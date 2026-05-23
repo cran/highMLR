@@ -1,0 +1,110 @@
+---
+title: "Getting started with highMLR"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Getting started with highMLR}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+## Overview
+
+`highMLR` provides a single, unified interface for high-dimensional
+feature selection when the outcome is a (possibly censored) survival
+time. The same `highmlr()` call dispatches to one of several machine
+learning methods:
+
+* `"coxnet"` -- Cox elastic net (`glmnet`)
+* `"rsf"` -- random survival forest (`ranger`)
+* `"aorsf"` -- accelerated oblique random survival forest (`aorsf`)
+* `"xgboost"` -- gradient-boosted Cox (`xgboost`)
+* `"stability"` -- stability selection (`stabs`)
+* `"univariate"` -- classical univariate Cox screening
+* `"pseudo"` -- pseudo-observation bridge to an arbitrary regression learner
+* `"finegray"` -- Fine-Gray competing-risks selection
+
+All methods return a `highmlr_fit` object with a common structure, so
+the downstream verbs (`print()`, `summary()`, `plot()`, `coef()`,
+`predict()`) and the companion functions
+(`highmlr_compare()`, `highmlr_stability()`, `highmlr_explain()`,
+`highmlr_screen()`, `highmlr_report()`) work identically regardless of
+which method produced the fit.
+
+## A first fit
+
+The package ships with two bundled high-dimensional survival datasets,
+`hnscc` and `srdata`. Both use `OS` for the survival time; the event
+indicator is `Death` in `hnscc` and `event` in `srdata` (1 = event,
+0 = censored).
+
+```{r, eval = FALSE}
+library(highMLR)
+data(hnscc)
+
+fit <- highmlr(
+  hnscc,
+  time   = "OS",
+  status = "Death",
+  method = "coxnet",
+  resampling = "cv",
+  folds = 5
+)
+
+print(fit)
+plot(fit, top_n = 20)
+```
+
+The examples in this vignette are not evaluated at build time because
+the underlying learners (`glmnet`, `ranger`, `aorsf`, `xgboost`, `grf`,
+`survex`) can be slow on high-dimensional data. Copy the chunks into an
+interactive session to run them.
+
+## Comparing methods
+
+`highmlr_compare()` runs several methods on the same data and returns a
+tidy side-by-side summary:
+
+```{r, eval = FALSE}
+cmp <- highmlr_compare(
+  hnscc, "OS", "Death",
+  methods = c("coxnet", "rsf", "univariate")
+)
+cmp$summary
+```
+
+## Pre-screening when p is very large
+
+For very wide data, reduce the candidate set first:
+
+```{r, eval = FALSE}
+data(srdata)
+keep <- highmlr_screen(srdata, "OS", "event",
+                       filter = "variance", keep = 500)
+fit  <- highmlr(srdata, "OS", "event",
+                features = keep, method = "coxnet")
+```
+
+## Explaining a fit
+
+Time-dependent SHAP values (SurvSHAP(t)) are available via
+`highmlr_explain()`, and a one-file biomarker report can be generated
+with `highmlr_report()`.
+
+```{r, eval = FALSE}
+ex <- highmlr_explain(fit, new_data = hnscc, method = "survshap")
+print(ex)
+plot(ex)
+```
+
+## Session information
+
+```{r}
+sessionInfo()
+```
